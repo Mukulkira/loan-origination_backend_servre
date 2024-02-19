@@ -9,6 +9,7 @@ import pandas as pd
 import os
 import json
 from sklearn.model_selection import train_test_split
+import sklearn
 
 # Load your TensorFlow model
 model = tf.keras.models.load_model('model.h5')
@@ -108,6 +109,37 @@ def predict(input_data):
 
 import requests
 from django.core.cache import cache
+import pickle
+import joblib
+
+def real_news(input_data):
+    # Load the trained decision tree model
+    # with open('decision_tree_model.pkl', 'rb') as model_file:
+    #     #model = pickle.load(model_file)
+    #     print(model_file)
+    
+    # Preprocess the input data if necessary
+    # For example, convert text data to numerical features
+    print(input_data)
+    processed_data = np.array(input_data)  # Example conversion, replace this with actual preprocessing
+    # print("processes_data=",processed_data)
+    
+    # Make predictions using the loaded model
+    # predictions = model.predict(processed_data)
+    print("The scikit-learn version is {}".format(sklearn.__version__))
+    model=pickle.load(open("model.pickle", "rb"))
+    vectorizer = pickle.load(open("vectorizer.pickle", "rb"))
+    # print("input_data=",input_data)
+    # for index in range(input_data.length):
+    #     result = model.predict(processed_data[index])
+    #     print("result for:",index,"is : ",result)
+    processed_data=vectorizer.transform(processed_data)
+    # print(processed_data)
+
+    predictions=model.predict(processed_data)
+    print("predictions=",predictions)
+    # return predictions
+    return []
 
 # Modify the function to fetch data from the Finnhub API
 @csrf_exempt
@@ -118,15 +150,14 @@ def prediction_endpoint(request):
             data = json.loads(request.body.decode('utf-8'))
             company_name = data.get('company_name')
 
+            if company_name is None or company_name.strip() == "":
+                return JsonResponse({'error': 'Empty or missing "company_name" field in request'}, status=400)
+            
             # Check if prediction result is in cache
             cache_key = f'prediction:{company_name}'
             cached_result = cache.get(cache_key)
             if cached_result:
                 return JsonResponse(cached_result)
-            
-            
-            if company_name is None or company_name.strip() == "":
-                return JsonResponse({'error': 'Empty or missing "company_name" field in request'}, status=400)
             
             # Calculate start and end dates for the last one day
             end_date = datetime.datetime.now().strftime('%Y-%m-%d')
@@ -144,6 +175,8 @@ def prediction_endpoint(request):
             if not articles:
                 return JsonResponse({'error': 'No articles found in the response'}, status=400)
             
+            # real_articles=real_news([article['summary'] for article in articles])
+
             # Get prediction
             prediction = predict([article['summary'] for article in articles])
             
